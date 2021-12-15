@@ -118,26 +118,6 @@ fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
     mesh
 }
 
-fn create_triangle() -> Mesh {
-    let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    
-    let mut normals = Vec::new();
-    for _ in 0..3 {
-        normals.push([0., 1., 0.]);
-    }
-    
-    let mut uvs: Vec<[f32; 2]> = vec![];
-    for _ in 0..3 {
-        uvs.push([0., 0.]);
-    }
-    
-    mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, vec![[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 1.0]]);
-    mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
-    mesh.set_indices(Some(Indices::U32(vec![0,1,2])));
-    mesh
-}
-
 fn main() {
     App::build()
         .insert_resource(WindowDescriptor {
