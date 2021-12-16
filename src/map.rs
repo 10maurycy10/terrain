@@ -57,6 +57,10 @@ pub fn genchunk(seed: (f32,f32)) -> ChunkData<f32> {
         
         *ptr = f1 + f2;
         
+        if *ptr < -0.71 {
+            *ptr = -0.71
+        }
+        
         //*ptr = 0.0;
     }
     return Box::new(cdata)
@@ -78,18 +82,55 @@ pub fn chunktotexture(
         ,TextureDimension::D2,
         &(0..(PIXELS_PER_CHUNK*PIXELS_PER_CHUNK))
             .flat_map(|i| {
+                // position for texture
                 let x = (i+ox)%PIXELS_PER_CHUNK;
                 let y = (i+oy)/PIXELS_PER_CHUNK;
-                let chunk_x = (i%PIXELS_PER_CHUNK)/PIXELS_PER_POINT;
-                let chunk_y = (i/PIXELS_PER_CHUNK)/PIXELS_PER_POINT;
-                let gidx = ((x%ASSET_SIZE)+(y%ASSET_SIZE)*ASSET_SIZE)*4;
-                if data[CHUNK_SIZE*chunk_y + chunk_x] > -0.5 {
-                    [grass.data[gidx + 0],grass.data[gidx + 1],grass.data[gidx + 2],255]
-                } else if data[CHUNK_SIZE*chunk_y + chunk_x] > -0.7 {
-                    [sand.data[gidx + 0],sand.data[gidx + 1],sand.data[gidx + 2],255]
-                } else {
-                    [water.data[gidx + 0],water.data[gidx + 1],water.data[gidx + 2],255]
-                }
+                
+                // compute position in chunk (points)
+                let chunk_xf = (i%PIXELS_PER_CHUNK) as f32 /PIXELS_PER_POINT as f32 ;
+                let chunk_yf = (i/PIXELS_PER_CHUNK) as f32 /PIXELS_PER_POINT as f32 ;
+                let chunk_x = (i%PIXELS_PER_CHUNK) as usize /PIXELS_PER_POINT as usize ;
+                let chunk_y = (i/PIXELS_PER_CHUNK) as usize /PIXELS_PER_POINT as usize ;
+                
+                // the fractional part.
+                let chunk_x_fraction = chunk_xf-chunk_xf.floor();
+                let chunk_y_fraction = chunk_yf-chunk_yf.floor();
+        
+                assert!(chunk_x_fraction < 1.0);
+                assert!(chunk_y_fraction < 1.0);
+                
+                //println!("{}",chunk_x_fraction);
+        
+                let point_ = chunk_x + chunk_y * CHUNK_SIZE;
+                let point_x = (chunk_x+1) + chunk_y * CHUNK_SIZE;
+                let point_y = chunk_x + (chunk_y+1) * CHUNK_SIZE;
+                let point_xy = (chunk_x+1) + (chunk_y+1) * CHUNK_SIZE;
+                
+                let point_x = if point_xy < CHUNK_SQSIZE {point_x} else {point_};
+                let point_y = if point_xy < CHUNK_SQSIZE {point_y} else {point_};
+                let point_xy = if point_xy < CHUNK_SQSIZE {point_xy} else {point_};
+                
+                let h    = data[point_];
+                let h_x  = data[point_x];
+                let h_y  = data[point_y];
+                let h_xy = data[point_xy];
+                
+                let ih1 = (h*(1.0-chunk_x_fraction)+h_x*(chunk_x_fraction)) * (1.0-chunk_y_fraction);
+                let ih2 = (h_y*(1.0-chunk_x_fraction)+h_xy*(chunk_x_fraction)) * (chunk_y_fraction);
+                
+                let ih = ih1+ih2;
+                
+                 // compute texture index
+                 let gidx = ((x%ASSET_SIZE)+(y%ASSET_SIZE)*ASSET_SIZE)*4;
+                 if ih > -0.3 {
+                     [grass.data[gidx + 0],grass.data[gidx + 1],grass.data[gidx + 2],255]
+                 } else if ih> -0.7 {
+                     [sand.data[gidx + 0],sand.data[gidx + 1],sand.data[gidx + 2],255]
+                 } else {
+                     [water.data[gidx + 0],water.data[gidx + 1],water.data[gidx + 2],255]
+                 }
+//                [(chunk_x_fraction * 255.0) as u8,(chunk_y_fraction * 255.0) as u8,0 as u8,255]
+                
             })
             .collect::<Vec<u8>>()
         ,TextureFormat::Rgba8UnormSrgb

@@ -44,7 +44,7 @@ fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
 ) {
-    // load grass
+    // load assets
     let _: Handle<Texture> = asset_server.load(map::ASSETS_GRASS);
     let _: Handle<Texture> = asset_server.load(map::ASSETS_WATER);
     let _: Handle<Texture> = asset_server.load(map::ASSETS_SAND);
