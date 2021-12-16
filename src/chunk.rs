@@ -69,7 +69,10 @@ pub fn generate_maps(
         };
         let (t, m, h) = match map::gen(&mut textures,map.seed) {
             Ok(x) => x,
-            Err(_) => continue,
+            Err(e) => {
+                println!("{}",e);
+                continue;
+            },
         };
         map.hightmap = Some(h);
         map.mesh = Some(m.clone());
@@ -80,7 +83,7 @@ pub fn generate_maps(
      
         let material_handle = materials.add(StandardMaterial {
             base_color_texture: Some(tex_handle.clone()),
-            unlit: false,
+            unlit: true,
             roughness: 0.9,
             metallic: 0.0,
             ..Default::default()

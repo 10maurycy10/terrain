@@ -10,13 +10,13 @@ use bevy::render::mesh::Indices;
 use bevy::render::pipeline::PrimitiveTopology;
 
 /// the filenames of the assets
-pub const ASSETS_GRASS: &str = "grass64.png";
-pub const ASSETS_WATER: &str = "water64.png";
-pub const ASSETS_SAND: &str = "sand64.png";
+pub const ASSETS_GRASS: &str = "grass16.png";
+pub const ASSETS_WATER: &str = "water16.png";
+pub const ASSETS_SAND: &str = "sand16.png";
 /// the side length (px) of assets
-pub const ASSET_SIZE: usize = 64;
+pub const ASSET_SIZE: usize = 16;
 /// the desired resolution of the map (point = point on hightmap)
-pub const PIXELS_PER_POINT: usize = 16;
+pub const PIXELS_PER_POINT: usize = 4;
 /// the side length of a chunk
 pub const CHUNK_SIZE: usize = 32;
 
@@ -24,7 +24,7 @@ pub const PIXELS_PER_CHUNK: usize = PIXELS_PER_POINT*CHUNK_SIZE;
 /// the aria (samples) of a chunk
 pub const CHUNK_SQSIZE: usize = CHUNK_SIZE*CHUNK_SIZE;
 /// size of sample on map`
-pub const VOXEL_SCALE: f32 = 0.1;
+pub const VOXEL_SCALE: f32 = 0.4;
 
 /// a row major array for hightmap data
 // x + z*CHUNK_SIZE
