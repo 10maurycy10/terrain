@@ -47,10 +47,13 @@ pub fn insert_map(
      mut commands: Commands,
 ) {
     let s = map::getchunksize();
-    commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(0.0, 0.0, 0.0), (0.0,0.0) ));
-    commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(s,   0.0, 0.0), (1.0,0.0) ));
-    commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(0.0, 0.0, s),   (0.0,1.0) ));
-    commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(s,   0.0, s),   (1.0,1.0) ));
+    for x in 0..5 {
+        for y in 0..5 {
+            let x = x as f32;
+            let y = y as f32;
+            commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(s*x,0.0,s*y),(x,y)));
+        }
+    }
 }
 
 /// set up.
