@@ -79,10 +79,10 @@ pub fn keyboard_events(
     let q = Quat::from_rotation_y(r);
     
     for mut c in cameras.iter_mut() {
-        let r = c.rotation.mul_vec3a(Vec3A::new(x,y,z));
+        let r = c.rotation.mul_vec3a(Vec3A::new(x,0.0,z));
         c.translation.x += r.x;
         c.translation.z += r.z;
-        c.translation.y += r.y;
+        c.translation.y += y;
         //c.rotation = c.rotation.mul_quat(q);
         c.rotation = q.mul_quat(c.rotation)
     }
