@@ -6,6 +6,9 @@ use bevy::{
     render::wireframe::{Wireframe, WireframeConfig, WireframePlugin},
     wgpu::{WgpuFeature, WgpuFeatures, WgpuOptions},
 };
+use bevy::render::texture::Extent3d;
+use bevy::render::texture::TextureDimension;
+use bevy::render::texture::TextureFormat;
 
 extern crate nalgebra as na;
 use na::{Vector3, Rotation3};
@@ -13,9 +16,14 @@ use na::{Vector3, Rotation3};
 use noise::{NoiseFn, Perlin};
 use noise::Seedable;
 
-const CHUNK_SIZE: usize = 16;
-const CHUNK_SQSIZE: usize = 16*16;
+const CHUNK_SIZE: usize = 32;
+const CHUNK_SQSIZE: usize = CHUNK_SIZE*CHUNK_SIZE;
 const VOXEL_SCALE: f32 = 0.2;
+
+enum AppState {
+    Loading,
+    Running
+}
 
 // x + z*CHUNK_SIZE
 type ChunkData<N> = Box<[N; CHUNK_SQSIZE]>;
@@ -30,9 +38,34 @@ fn genchunk() -> ChunkData<f32> {
     for (idx, ptr) in cdata.iter_mut().enumerate() {
         let x = (idx % CHUNK_SIZE) as f32;
         let y = (idx / CHUNK_SIZE) as f32;
-        *ptr =  perlin.get([x as f64/5.,y as f64/5.]) as f32;
+        
+        let f1 = perlin.get([x as f64/3.0,y as f64/3.0]) as f32 * 0.2;
+        let f2 = perlin.get([x as f64/10.0,y as f64/10.0]) as f32 * 2.0;
+        
+        *ptr = f1 + f2;
+        
+        //*ptr = 0.0;
     }
     return Box::new(cdata)
+}
+
+fn chunktotexture(data:&ChunkData<f32>, grass : &Texture) -> Texture {
+    let grass = grass.convert(TextureFormat::Rgba8UnormSrgb).unwrap();
+    let tex = Texture::new_fill(
+        Extent3d::new(16*CHUNK_SIZE as u32,16*CHUNK_SIZE as u32,1)
+        ,TextureDimension::D2,
+        &(0..(CHUNK_SQSIZE*16*16))
+            .flat_map(|i| {
+                let x = i%(CHUNK_SIZE*16);
+                let y = i/(CHUNK_SIZE*16);
+                let gidx = ((x%64)+(y%64)*64)*4;
+                [grass.data[gidx + 0],grass.data[gidx + 1],grass.data[gidx + 2],255]
+                //[255 as u8,255 as u8,0,255]
+            })
+            .collect::<Vec<u8>>()
+        ,TextureFormat::Rgba8UnormSrgb
+    );
+    tex
 }
 
 fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
@@ -44,11 +77,12 @@ fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
     }
     
     let mut uvs: Vec<[f32; 2]> = Vec::new();
-    for _ in 0..(CHUNK_SQSIZE) {
-        uvs.push([0., 0.]);
+    for i in 0..(CHUNK_SQSIZE) {
+        let x = (i % CHUNK_SIZE);
+        let y = (i / CHUNK_SIZE);
+        uvs.push([x as f32/CHUNK_SIZE as f32,y as f32/CHUNK_SIZE as f32]);
     }
     
-    // TODO FIX THIS !!
     let mut normals = Vec::new();
     for _ in 0..(CHUNK_SQSIZE)  {
         normals.push([0., 0., 0.]);
@@ -133,42 +167,93 @@ fn main() {
             ..Default::default()
         })
         .insert_resource(Msaa { samples: 4 })
+        .insert_resource(AppState::Loading)
         .add_plugins(DefaultPlugins)
         .add_plugin(WireframePlugin)
         .add_startup_system(setup.system())
+        .add_system(setup_stage2.system())
         .run();
 }
 
-/// set up a simple 3D scene
+/// start loading assets
 fn setup(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+    mut textures: ResMut<Assets<Texture>>,
 ) {
+    // load grass
+    let texture_handle: Handle<Texture> = asset_server.load("grass64.png");
+}
+
+/// set up.
+fn setup_stage2(
+    mut commands: Commands,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<StandardMaterial>>,
+    asset_server: Res<AssetServer>,
+    mut state: ResMut<AppState>,
+    mut textures: ResMut<Assets<Texture>>,
+) {
+   // if the end of the function was reached, return 
+    match *state {
+        AppState::Running => return,
+        AppState::Loading => ()
+    }
+    
+    // get a handle to grass64.png
+    let grass_handle: Handle<Texture>  = asset_server.load("grass64.png");
+    
+    // if not loaded, return
+    match textures.get(grass_handle.clone()) {
+        Some(_) => (),
+        None => return,
+    }
+    
+    // generate chunk hightmap
+    let chunk = genchunk();
+    
+    // generate texture from hightmap
+    let tex = chunktotexture(&chunk,textures.get(grass_handle).unwrap());
+    
+    // generate mesh from hightmap
+    let mesh = chunktomesh(&chunk);
+
     // set up the camera
     let mut camera = OrthographicCameraBundle::new_3d();
     camera.orthographic_projection.scale = 3.0;
     camera.transform = Transform::from_xyz(5.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y);
     
-    let chunk = genchunk();
-    
-    let mesh = chunktomesh(&chunk);
-
     // camera
     commands.spawn_bundle(camera);
 
-    // world
-    let mut w = commands.spawn_bundle(PbrBundle {
-        mesh: meshes.add(mesh),
-        material: materials.add(Color::rgb(0.3, 0.5, 0.3).into()),
+    let tex_handle = textures.add(tex);
+    
+    // this material renders the texture normally
+    let material_handle = materials.add(StandardMaterial {
+        base_color_texture: Some(tex_handle.clone()),
+        unlit: false,
+        roughness: 0.9,
+        metallic: 0.0,
         ..Default::default()
     });
     
-//    w.insert(Wireframe);
+    // world
+    let mut w = commands.spawn_bundle(PbrBundle {
+        mesh: meshes.add(mesh),
+        material: material_handle,
+        ..Default::default()
+    });
+    
+    //w.insert(Wireframe);
     
     // light
     commands.spawn_bundle(LightBundle {
         transform: Transform::from_xyz(-3.0, 6.0, -3.0),
         ..Default::default()
     });
+    
+    *state = AppState::Running;
 }
+
