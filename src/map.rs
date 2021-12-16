@@ -51,7 +51,7 @@ pub fn genchunk() -> ChunkData<f32> {
 }
 
 /// convert a hightmap into a texture
-pub fn chunktotexture(data:&ChunkData<f32>, grass : &Texture) -> Texture {
+pub fn chunktotexture(_data:&ChunkData<f32>, grass : &Texture) -> Texture {
     let grass = grass.convert(TextureFormat::Rgba8UnormSrgb).unwrap();
     let tex = Texture::new_fill(
         Extent3d::new((PIXELS_PER_CHUNK) as u32,(PIXELS_PER_CHUNK) as u32,1)
@@ -87,8 +87,8 @@ pub fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
     // this will strech the entire texture over the mesh, resulting in distortion on slopes
     let mut uvs: Vec<[f32; 2]> = Vec::new();
     for i in 0..(CHUNK_SQSIZE) {
-        let x = (i % CHUNK_SIZE);
-        let y = (i / CHUNK_SIZE);
+        let x = i % CHUNK_SIZE;
+        let y = i / CHUNK_SIZE;
         uvs.push([x as f32/CHUNK_SIZE as f32,y as f32/CHUNK_SIZE as f32]);
     }
     
@@ -142,9 +142,9 @@ pub fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
         let n = v1.cross(&v2).normalize();
         
         // add the face normal to the normals for all points ajacent to tri.
-        let m0 = (n + Vector3::from_row_slice(&normals[idx0]));
-        let m1 = (n + Vector3::from_row_slice(&normals[idx1]));
-        let m2 = (n + Vector3::from_row_slice(&normals[idx2]));
+        let m0 = n + Vector3::from_row_slice(&normals[idx0]);
+        let m1 = n + Vector3::from_row_slice(&normals[idx1]);
+        let m2 = n + Vector3::from_row_slice(&normals[idx2]);
         
         let n0 = m0.column(0);
         let n1 = m1.column(0);
@@ -173,7 +173,7 @@ pub fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
 }
 
 /// helper function to generate textures and mesh, fails if assets are not loaded.
-pub fn gen(assets: &mut Assets<Texture>) -> Result<(Texture,Mesh),String> {
+pub fn gen(assets: &mut Assets<Texture>) -> Result<(Texture,Mesh,ChunkData<f32>),String> {
     let hightmap = genchunk();
     let mesh = chunktomesh(&hightmap);
     let tex = chunktotexture(
@@ -181,5 +181,5 @@ pub fn gen(assets: &mut Assets<Texture>) -> Result<(Texture,Mesh),String> {
         assets.get(ASSETS_GRASS)
             .map_or_else(|| Err("cant get grass.".to_string()), |x| Ok(x))?
     );
-    Ok((tex,mesh))
+    Ok((tex,mesh,hightmap))
 }
