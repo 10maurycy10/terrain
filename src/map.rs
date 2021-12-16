@@ -9,8 +9,10 @@ use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use bevy::render::pipeline::PrimitiveTopology;
 
-/// the filename of the asset for grass
+/// the filenames of the assets
 pub const ASSETS_GRASS: &str = "grass64.png";
+pub const ASSETS_WATER: &str = "water64.png";
+pub const ASSETS_SAND: &str = "sand64.png";
 /// the side length (px) of assets
 pub const ASSET_SIZE: usize = 64;
 /// the desired resolution of the map (point = point on hightmap)
@@ -22,26 +24,36 @@ pub const PIXELS_PER_CHUNK: usize = PIXELS_PER_POINT*CHUNK_SIZE;
 /// the aria (samples) of a chunk
 pub const CHUNK_SQSIZE: usize = CHUNK_SIZE*CHUNK_SIZE;
 /// size of sample on map`
-pub const VOXEL_SCALE: f32 = 0.2;
+pub const VOXEL_SCALE: f32 = 0.1;
 
 /// a row major array for hightmap data
 // x + z*CHUNK_SIZE
 pub type ChunkData<N> = Box<[N; CHUNK_SQSIZE]>;
 
+/// calculate the size of the chunk mesh
+pub fn getchunksize() -> f32 {
+    VOXEL_SCALE * (CHUNK_SIZE-1) as f32
+}
 
 /// create a hightmap
-pub fn genchunk() -> ChunkData<f32> {
+pub fn genchunk(seed: (f32,f32)) -> ChunkData<f32> {
     // todo, use mabey uninit
     let mut cdata = [0.0_f32; CHUNK_SQSIZE];
     let perlin = Perlin::new();
-    perlin.set_seed(10);
+    perlin.set_seed(100);
+    
+    let ox = seed.0*(CHUNK_SIZE-1) as f32;
+    let oy = seed.1*(CHUNK_SIZE-1) as f32;
     
     for (idx, ptr) in cdata.iter_mut().enumerate() {
         let x = (idx % CHUNK_SIZE) as f32;
         let y = (idx / CHUNK_SIZE) as f32;
         
-        let f1 = perlin.get([x as f64/3.0,y as f64/3.0]) as f32 * 0.2;
-        let f2 = perlin.get([x as f64/10.0,y as f64/10.0]) as f32 * 2.0;
+        let wx = ox + x;
+        let wy = oy + y;
+        
+        let f1 = perlin.get([wx as f64/2.0,wy as f64/2.0]) as f32 * 0.4;
+        let f2 = perlin.get([wx as f64/20.0,wy as f64/20.0]) as f32 * 4.0;
         
         *ptr = f1 + f2;
         
@@ -51,20 +63,33 @@ pub fn genchunk() -> ChunkData<f32> {
 }
 
 /// convert a hightmap into a texture
-pub fn chunktotexture(_data:&ChunkData<f32>, grass : &Texture) -> Texture {
+pub fn chunktotexture(
+    data:&ChunkData<f32>, 
+    grass : &Texture, 
+    water: &Texture,
+    sand: &Texture,
+    seed: (f32,f32)
+) -> Texture {
     let grass = grass.convert(TextureFormat::Rgba8UnormSrgb).unwrap();
+    let ox = seed.0 as usize * (CHUNK_SIZE-1) * PIXELS_PER_POINT;
+    let oy = seed.1 as usize * (CHUNK_SIZE-1) * PIXELS_PER_POINT;
     let tex = Texture::new_fill(
         Extent3d::new((PIXELS_PER_CHUNK) as u32,(PIXELS_PER_CHUNK) as u32,1)
         ,TextureDimension::D2,
         &(0..(PIXELS_PER_CHUNK*PIXELS_PER_CHUNK))
             .flat_map(|i| {
-                let x = i%PIXELS_PER_CHUNK;
-                let y = i/PIXELS_PER_CHUNK;
-                //let map_x = x/PIXELS_PER_POINT;
-                //let map_y = y/PIXELS_PER_POINT;
+                let x = (i+ox)%PIXELS_PER_CHUNK;
+                let y = (i+oy)/PIXELS_PER_CHUNK;
+                let chunk_x = (i%PIXELS_PER_CHUNK)/PIXELS_PER_POINT;
+                let chunk_y = (i/PIXELS_PER_CHUNK)/PIXELS_PER_POINT;
                 let gidx = ((x%ASSET_SIZE)+(y%ASSET_SIZE)*ASSET_SIZE)*4;
-                [grass.data[gidx + 0],grass.data[gidx + 1],grass.data[gidx + 2],255]
-                //[255 as u8,255 as u8,0,255]
+                if data[CHUNK_SIZE*chunk_y + chunk_x] > -0.5 {
+                    [grass.data[gidx + 0],grass.data[gidx + 1],grass.data[gidx + 2],255]
+                } else if data[CHUNK_SIZE*chunk_y + chunk_x] > -0.7 {
+                    [sand.data[gidx + 0],sand.data[gidx + 1],sand.data[gidx + 2],255]
+                } else {
+                    [water.data[gidx + 0],water.data[gidx + 1],water.data[gidx + 2],255]
+                }
             })
             .collect::<Vec<u8>>()
         ,TextureFormat::Rgba8UnormSrgb
@@ -173,13 +198,18 @@ pub fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
 }
 
 /// helper function to generate textures and mesh, fails if assets are not loaded.
-pub fn gen(assets: &mut Assets<Texture>) -> Result<(Texture,Mesh,ChunkData<f32>),String> {
-    let hightmap = genchunk();
+pub fn gen(assets: &mut Assets<Texture>,seed: (f32,f32)) -> Result<(Texture,Mesh,ChunkData<f32>),String> {
+    let grass = assets.get(ASSETS_GRASS).map_or_else(|| Err("cant get grass.".to_string()), |x| Ok(x))?;
+    let water = assets.get(ASSETS_WATER).map_or_else(|| Err("cant get water.".to_string()), |x| Ok(x))?;
+    let sand = assets.get(ASSETS_SAND).map_or_else(|| Err("cant get sand.".to_string()), |x| Ok(x))?;
+    let hightmap = genchunk(seed);
     let mesh = chunktomesh(&hightmap);
     let tex = chunktotexture(
         &hightmap,
-        assets.get(ASSETS_GRASS)
-            .map_or_else(|| Err("cant get grass.".to_string()), |x| Ok(x))?
+        grass,
+        water,
+        sand,
+        seed
     );
     Ok((tex,mesh,hightmap))
 }

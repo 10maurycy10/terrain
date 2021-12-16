@@ -5,18 +5,52 @@ use bevy::prelude::*;
 use crate::map;
 use bevy::render::wireframe::Wireframe;
 
+/// the componet represienting a chunk
 pub struct Map {
     pub hightmap: Option<map::ChunkData<f32>>,
     tex: Option<Texture>,
     mesh: Option<Mesh>,
     render: Option<Entity>,
-    wireframe: bool
+    wireframe: bool,
+    transform: Transform,
+    seed: (f32,f32)
+}
+
+impl Map {
+    /// init a new ungenerated map
+    pub fn new(seed: (f32,f32)) -> Map {
+        Map {
+            hightmap: None, 
+            tex: None, 
+            mesh: None, 
+            render: None,
+            wireframe: false,
+            transform: Transform::identity(),
+            seed
+        }
+    }
+    /// init a map with a trasform
+    pub fn new_with_transform(t: Transform,seed: (f32,f32)) -> Map {
+        Map {
+            hightmap: None, 
+            tex: None, 
+            mesh: None, 
+            render: None,
+            wireframe: false,
+            transform: t,
+            seed
+        }
+    }
 }
 
 pub fn insert_map(
      mut commands: Commands,
 ) {
-    commands.spawn().insert(Map {hightmap: None, tex: None, mesh: None, render: None,wireframe: false});
+    let s = map::getchunksize();
+    commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(0.0, 0.0, 0.0), (0.0,0.0) ));
+    commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(s,   0.0, 0.0), (1.0,0.0) ));
+    commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(0.0, 0.0, s),   (0.0,1.0) ));
+    commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(s,   0.0, s),   (1.0,1.0) ));
 }
 
 /// set up.
@@ -33,7 +67,7 @@ pub fn generate_maps(
             Some(_) => continue,
             None => ()
         };
-        let (t, m, h) = match map::gen(&mut textures) {
+        let (t, m, h) = match map::gen(&mut textures,map.seed) {
             Ok(x) => x,
             Err(_) => continue,
         };
@@ -55,6 +89,7 @@ pub fn generate_maps(
         let mut w = commands.spawn_bundle(PbrBundle {
             mesh: meshes.add(m),
             material: material_handle,
+            transform: map.transform,
             ..Default::default()
         });
         

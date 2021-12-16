@@ -45,12 +45,14 @@ fn setup(
     asset_server: Res<AssetServer>,
 ) {
     // load grass
-    let _: Handle<Texture> = asset_server.load("grass64.png");
+    let _: Handle<Texture> = asset_server.load(map::ASSETS_GRASS);
+    let _: Handle<Texture> = asset_server.load(map::ASSETS_WATER);
+    let _: Handle<Texture> = asset_server.load(map::ASSETS_SAND);
     
     // set up the camera
     let mut camera = OrthographicCameraBundle::new_3d();
     camera.orthographic_projection.scale = 3.0;
-    camera.transform = Transform::from_xyz(5.0, 5.0, 5.0).looking_at(Vec3::ZERO, Vec3::Y);
+    camera.transform = Transform::from_xyz(-2.0, 5.0, -2.0).looking_at(Vec3::new(3.0,0.0,3.0), Vec3::Y);
      
     // camera
     commands.spawn_bundle(camera);
