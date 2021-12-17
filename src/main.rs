@@ -48,6 +48,8 @@ fn setup(
     let a: Handle<Texture> = asset_server.load(map::ASSETS_GRASS);
     let b: Handle<Texture> = asset_server.load(map::ASSETS_WATER);
     let c: Handle<Texture> = asset_server.load(map::ASSETS_SAND);
+    let d: Handle<Texture> = asset_server.load(map::ASSETS_SNOW);
+    let e: Handle<Texture> = asset_server.load(map::ASSETS_STONE);
     
     // set up the camera
     let mut camera = PerspectiveCameraBundle::new_3d();
@@ -57,7 +59,7 @@ fn setup(
     commands.spawn_bundle(camera);
     
     // dirty hack to prevent asset unloading
-    commands.spawn().insert(a).insert(b).insert(c);
+    commands.spawn().insert(a).insert(b).insert(c).insert(d).insert(e);
     
      // light
      commands.spawn_bundle(LightBundle {

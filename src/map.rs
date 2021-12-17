@@ -13,6 +13,8 @@ use bevy::render::pipeline::PrimitiveTopology;
 pub const ASSETS_GRASS: &str = "grass16.png";
 pub const ASSETS_WATER: &str = "water16.png";
 pub const ASSETS_SAND: &str = "sand16.png";
+pub const ASSETS_SNOW: &str = "snow16.png";
+pub const ASSETS_STONE: &str = "stone16.png";
 /// the side length (px) of assets
 pub const ASSET_SIZE: usize = 16;
 /// the desired resolution of the map (point = point on hightmap)
@@ -54,8 +56,9 @@ pub fn genchunk(seed: (f32,f32)) -> ChunkData<f32> {
         
         let f1 = perlin.get([wx as f64/2.0,wy as f64/2.0]) as f32 * 0.4;
         let f2 = perlin.get([wx as f64/20.0,wy as f64/20.0]) as f32 * 4.0;
+        let f3 = perlin.get([wx as f64/200.0,wy as f64/200.0]) as f32 * 30.0;
         
-        *ptr = f1 + f2;
+        *ptr = f1 + f2 + f3;
         
         if *ptr < -0.71 {
             *ptr = -0.71
@@ -66,12 +69,44 @@ pub fn genchunk(seed: (f32,f32)) -> ChunkData<f32> {
     return Box::new(cdata)
 }
 
+/// create a slopemap from hightmap
+pub fn genslope(data: &ChunkData<f32>) -> ChunkData<f32> {
+    // todo, use mabey uninit
+    let mut cdata = [0.0_f32; CHUNK_SQSIZE];
+    
+    for (idx, ptr) in cdata.iter_mut().enumerate() {
+        let x = (idx % CHUNK_SIZE);
+        let y = (idx / CHUNK_SIZE);
+        
+        let o = x + y * CHUNK_SIZE;
+        let ox = (x+1) + y * CHUNK_SIZE;
+        let oy = x + (y+1) * CHUNK_SIZE;
+        let oxy = (x+1) + (y+1) * CHUNK_SIZE;
+        
+        if x != (CHUNK_SIZE-1) {
+            if y != (CHUNK_SIZE-1) {
+                let max_h = data[o].max(data[ox].max(data[oy].max(data[oxy])));
+                let min_h = data[o].min(data[ox].min(data[oy].min(data[oxy])));
+                let c = data[x+y*CHUNK_SIZE];
+                
+                *ptr = (c-max_h).abs().max((c-min_h).abs());
+            }
+        }
+        
+    }
+    return Box::new(cdata)
+}
+
+
 /// convert a hightmap into a texture
 pub fn chunktotexture(
     data:&ChunkData<f32>, 
+    slopedata:&ChunkData<f32>, 
     grass : &Texture, 
     water: &Texture,
     sand: &Texture,
+    snow: &Texture,
+    stone: &Texture,
     seed: (f32,f32)
 ) -> Texture {
     let grass = grass.convert(TextureFormat::Rgba8UnormSrgb).unwrap();
@@ -122,12 +157,18 @@ pub fn chunktotexture(
                 
                  // compute texture index
                  let gidx = ((x%ASSET_SIZE)+(y%ASSET_SIZE)*ASSET_SIZE)*4;
-                 if ih > -0.3 {
-                     [grass.data[gidx + 0],grass.data[gidx + 1],grass.data[gidx + 2],255]
+                 if ih > 22.0 {
+                    return [snow.data[gidx + 0],snow.data[gidx + 1],snow.data[gidx + 2],255]
+                 } else if ih > -0.3 {
+                    if (slopedata[point_] > 1.5) {
+                         return[stone.data[gidx + 0],stone.data[gidx + 0],stone.data[gidx + 0],255]
+                    } else {
+                        return [grass.data[gidx + 0],grass.data[gidx + 1],grass.data[gidx + 2],255]
+                    }
                  } else if ih> -0.7 {
-                     [sand.data[gidx + 0],sand.data[gidx + 1],sand.data[gidx + 2],255]
+                     return [sand.data[gidx + 0],sand.data[gidx + 1],sand.data[gidx + 2],255]
                  } else {
-                     [water.data[gidx + 0],water.data[gidx + 1],water.data[gidx + 2],255]
+                     return [water.data[gidx + 0],water.data[gidx + 1],water.data[gidx + 2],255]
                  }
 //                [(chunk_x_fraction * 255.0) as u8,(chunk_y_fraction * 255.0) as u8,0 as u8,255]
                 
@@ -243,13 +284,19 @@ pub fn gen(assets: &mut Assets<Texture>,seed: (f32,f32)) -> Result<(Texture,Mesh
     let grass = assets.get(ASSETS_GRASS).map_or_else(|| Err("cant get grass.".to_string()), |x| Ok(x))?;
     let water = assets.get(ASSETS_WATER).map_or_else(|| Err("cant get water.".to_string()), |x| Ok(x))?;
     let sand = assets.get(ASSETS_SAND).map_or_else(|| Err("cant get sand.".to_string()), |x| Ok(x))?;
+    let snow = assets.get(ASSETS_SNOW).map_or_else(|| Err("cant get snow.".to_string()), |x| Ok(x))?;
+    let stone = assets.get(ASSETS_STONE).map_or_else(|| Err("cant get stone.".to_string()), |x| Ok(x))?;
     let hightmap = genchunk(seed);
+    let slopemap = genslope(&hightmap);
     let mesh = chunktomesh(&hightmap);
     let tex = chunktotexture(
         &hightmap,
+        &slopemap,
         grass,
         water,
         sand,
+        snow,
+        stone,
         seed
     );
     Ok((tex,mesh,hightmap))

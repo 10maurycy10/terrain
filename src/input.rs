@@ -64,14 +64,14 @@ pub fn keyboard_events(
     let mut r = 0.0;
     let mut y = 0.0;
     
-    if state.w {z -= 0.1;}
-    if state.s {z += 0.1;}
+    if state.w {z -= 0.3;}
+    if state.s {z += 0.3;}
     
     if state.shift {y += 0.1;}
     if state.ctrl {y -= 0.1;}
     
-    if state.a {x -= 0.1;}
-    if state.d {x += 0.1;}
+    if state.a {x -= 0.3;}
+    if state.d {x += 0.3;}
     
     if state.q {r += 0.05;}
     if state.e {r -= 0.05;}
