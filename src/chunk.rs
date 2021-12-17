@@ -10,48 +10,38 @@ pub struct Map {
     pub hightmap: Option<map::ChunkData<f32>>,
     tex: Option<Texture>,
     mesh: Option<Mesh>,
-    render: Option<Entity>,
+    pub render: Option<Entity>,
+    pub this: Option<Entity>,
     wireframe: bool,
     transform: Transform,
     seed: (f32,f32)
 }
 
 impl Map {
-    /// init a new ungenerated map
-    pub fn new(seed: (f32,f32)) -> Map {
-        Map {
-            hightmap: None, 
-            tex: None, 
-            mesh: None, 
-            render: None,
-            wireframe: false,
-            transform: Transform::identity(),
-            seed
-        }
-    }
+//     /// init a new ungenerated map
+//     pub fn new(seed: (f32,f32), e: Entity) -> Map {
+//         Map {
+//             hightmap: None, 
+//             tex: None, 
+//             mesh: None, 
+//             render: None,
+//             this: Some(e),
+//             wireframe: false,
+//             transform: Transform::identity(),
+//             seed
+//         }
+//     }
     /// init a map with a trasform
-    pub fn new_with_transform(t: Transform,seed: (f32,f32)) -> Map {
+    pub fn new_with_transform(t: Transform,seed: (f32,f32), e: Entity) -> Map {
         Map {
             hightmap: None, 
             tex: None, 
             mesh: None, 
             render: None,
+            this: Some(e),
             wireframe: false,
             transform: t,
             seed
-        }
-    }
-}
-
-pub fn insert_map(
-     mut commands: Commands,
-) {
-    let s = map::getchunksize();
-    for x in 0..5 {
-        for y in 0..5 {
-            let x = x as f32;
-            let y = y as f32;
-            commands.spawn().insert(Map::new_with_transform(Transform::from_xyz(s*x,0.0,s*y),(x,y)));
         }
     }
 }
@@ -102,7 +92,6 @@ pub fn generate_maps(
         if map.wireframe {
             w.insert(Wireframe);
         }
-        
         map.render = Some(w.id());
         
         println!("map added to renderer")

@@ -31,7 +31,7 @@ pub fn keyboard_events(
     for ev in key_evr.iter() {
         match ev.state {
             ElementState::Pressed => {
-                match (ev.key_code) {
+                match ev.key_code {
                     Some(KeyCode::W) => state.w = true,
                     Some(KeyCode::A) => state.a = true,
                     Some(KeyCode::S) => state.s = true,
@@ -44,7 +44,7 @@ pub fn keyboard_events(
                 }
             }
             ElementState::Released => {
-                match (ev.key_code) {
+                match ev.key_code {
                     Some(KeyCode::W) => state.w = false,
                     Some(KeyCode::A) => state.a = false,
                     Some(KeyCode::S) => state.s = false,
