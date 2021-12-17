@@ -13,15 +13,27 @@ pub struct InputState{
     e: bool,
     shift: bool,
     ctrl: bool,
+    movetimer: Timer
 }
 
 pub fn set_up(
     mut commands: Commands,
 ) {
-    commands.insert_resource(InputState { w: false,a: false,s: false,d: false,q: false,e: false, shift: false, ctrl: false})
+    commands.insert_resource(InputState { 
+        w: false,
+        a: false,
+        s: false,
+        d: false,
+        q: false,
+        e: false, 
+        shift: false, 
+        ctrl: false, 
+        movetimer: Timer::from_seconds(1.0/30.0, true)
+    })
 }
 
 pub fn keyboard_events(
+    time: Res<Time>,
     mut key_evr: EventReader<KeyboardInput>,
     mut cameras: Query<&mut GlobalTransform, With<Camera>>,
     mut state: ResMut<InputState>
@@ -59,19 +71,23 @@ pub fn keyboard_events(
         }
     }
     
+    if !state.movetimer.tick(time.delta()).just_finished() {
+        return;
+    }
+    
     let mut x = 0.0;
     let mut z = 0.0;
     let mut r = 0.0;
     let mut y = 0.0;
     
-    if state.w {z -= 0.3;}
-    if state.s {z += 0.3;}
+    if state.w {z -= 0.6;}
+    if state.s {z += 0.6;}
     
-    if state.shift {y += 0.1;}
-    if state.ctrl {y -= 0.1;}
+    if state.shift {y += 0.2;}
+    if state.ctrl {y -= 0.2;}
     
-    if state.a {x -= 0.3;}
-    if state.d {x += 0.3;}
+    if state.a {x -= 0.6;}
+    if state.d {x += 0.6;}
     
     if state.q {r += 0.05;}
     if state.e {r -= 0.05;}

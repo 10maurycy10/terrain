@@ -15,7 +15,7 @@ fn main() {
     App::new()
         .insert_resource(WindowDescriptor {
             title: "Terrain".to_string(),
-            vsync: true,
+            vsync: false,
             ..Default::default()
         })
 //         .insert_resource(WgpuOptions {
@@ -67,13 +67,13 @@ fn setup(
     mem::forget(d);   
     mem::forget(e);
     
-     // light
-     commands.spawn_bundle(DirectionalLightBundle {
-        directional_light: DirectionalLight {
-            illuminance: 30000.0,
-            ..Default::default()
-        },
-        transform: Transform::from_xyz(-5.0, 5.0, -5.0).looking_at(Vec3::ZERO, Vec3::Y),
-         ..Default::default()
-     });
+      // light
+      commands.spawn_bundle(DirectionalLightBundle {
+         directional_light: DirectionalLight {
+             illuminance: 30000.0,
+             ..Default::default()
+         },
+         transform: Transform::from_xyz(-5.0, 5.0, -5.0).looking_at(Vec3::ZERO, Vec3::Y),
+          ..Default::default()
+      });
 }

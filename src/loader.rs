@@ -30,8 +30,8 @@ pub fn load(
     let x = (c.translation.x / s) as i32;
     let y = (c.translation.z / s) as i32;
     
-    for cx in (x-4)..(x+4) {
-        for cy in (y-4)..(y+4) {
+    for cx in (x-6)..(x+6) {
+        for cy in (y-6)..(y+6) {
             match data.loader.get(&(cx,cy)) {
                 Some(_) => continue,
                 None => ()
@@ -47,7 +47,7 @@ pub fn load(
     let mut v: Vec<(i32,i32)> = Vec::new();
     
     for (k, id) in data.loader.iter() {
-         if ((x - k.0).abs()>6) || ((y - k.1).abs())>6 {
+         if ((x - k.0).abs()>7) || ((y - k.1).abs())>7 {
             println!("{:?} marked for unload",k);
             v.push(*k);
             commands.entity(*id).insert(UnloadMarker {});

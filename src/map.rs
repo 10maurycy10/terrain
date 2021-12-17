@@ -21,7 +21,7 @@ pub const ASSET_SIZE: usize = 16;
 /// the desired resolution of the map (point = point on hightmap)
 pub const PIXELS_PER_POINT: usize = 4;
 /// the side length of a chunk
-pub const CHUNK_SIZE: usize = 32;
+pub const CHUNK_SIZE: usize = 64;
 
 pub const PIXELS_PER_CHUNK: usize = PIXELS_PER_POINT*CHUNK_SIZE;
 /// the aria (samples) of a chunk
