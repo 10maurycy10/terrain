@@ -3,16 +3,16 @@
 use bevy::render::mesh::Mesh;
 use bevy::prelude::*;
 use crate::map;
-use bevy::render::wireframe::Wireframe;
 
 /// the componet represienting a chunk
+#[derive(Component)]
 pub struct Map {
     pub hightmap: Option<map::ChunkData<f32>>,
-    tex: Option<Texture>,
+    tex: Option<Image>,
     mesh: Option<Mesh>,
     pub render: Option<Entity>,
     pub this: Option<Entity>,
-    wireframe: bool,
+//    wireframe: bool,
     transform: Transform,
     seed: (f32,f32)
 }
@@ -39,7 +39,7 @@ impl Map {
             mesh: None, 
             render: None,
             this: Some(e),
-            wireframe: false,
+  //          wireframe: false,
             transform: t,
             seed
         }
@@ -52,7 +52,7 @@ pub fn generate_maps(
     mut meshes: ResMut<Assets<Mesh>>,
     mut materials: ResMut<Assets<StandardMaterial>>,
     mut maps: Query<&mut Map>,
-    mut textures: ResMut<Assets<Texture>>,
+    mut textures: ResMut<Assets<Image>>,
 
 ) {
     for mut map in maps.iter_mut() {
@@ -76,8 +76,8 @@ pub fn generate_maps(
      
         let material_handle = materials.add(StandardMaterial {
             base_color_texture: Some(tex_handle.clone()),
-            unlit: true,
-            roughness: 0.9,
+            unlit: false,
+            perceptual_roughness: 0.9,
             metallic: 0.0,
             ..Default::default()
         });
@@ -89,9 +89,9 @@ pub fn generate_maps(
             ..Default::default()
         });
         
-        if map.wireframe {
-            w.insert(Wireframe);
-        }
+//         if map.wireframe {
+//             w.insert(Wireframe);
+//         }
         map.render = Some(w.id());
         
         println!("map added to renderer")

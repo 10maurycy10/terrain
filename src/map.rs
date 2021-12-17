@@ -2,12 +2,13 @@ use noise::{NoiseFn, Perlin};
 use noise::Seedable;
 use nalgebra::Vector3;
 use bevy::render::mesh::Mesh;
-use bevy::render::texture::Extent3d;
-use bevy::render::texture::TextureDimension;
-use bevy::render::texture::TextureFormat;
+use bevy::render::render_resource::Extent3d;
+use bevy::render::render_resource::TextureDimension;
+use bevy::render::render_resource::PrimitiveTopology;
+use bevy::render::render_resource::TextureFormat;
+use bevy::render::texture::Image;
 use bevy::prelude::*;
 use bevy::render::mesh::Indices;
-use bevy::render::pipeline::PrimitiveTopology;
 
 /// the filenames of the assets
 pub const ASSETS_GRASS: &str = "grass16.png";
@@ -75,8 +76,8 @@ pub fn genslope(data: &ChunkData<f32>) -> ChunkData<f32> {
     let mut cdata = [0.0_f32; CHUNK_SQSIZE];
     
     for (idx, ptr) in cdata.iter_mut().enumerate() {
-        let x = (idx % CHUNK_SIZE);
-        let y = (idx / CHUNK_SIZE);
+        let x = idx % CHUNK_SIZE;
+        let y = idx / CHUNK_SIZE;
         
         let o = x + y * CHUNK_SIZE;
         let ox = (x+1) + y * CHUNK_SIZE;
@@ -102,18 +103,22 @@ pub fn genslope(data: &ChunkData<f32>) -> ChunkData<f32> {
 pub fn chunktotexture(
     data:&ChunkData<f32>, 
     slopedata:&ChunkData<f32>, 
-    grass : &Texture, 
-    water: &Texture,
-    sand: &Texture,
-    snow: &Texture,
-    stone: &Texture,
+    grass : &Image, 
+    water: &Image,
+    sand: &Image,
+    snow: &Image,
+    stone: &Image,
     seed: (f32,f32)
-) -> Texture {
+) -> Image {
     let grass = grass.convert(TextureFormat::Rgba8UnormSrgb).unwrap();
     let ox = seed.0 as usize * (CHUNK_SIZE-1) * PIXELS_PER_POINT;
     let oy = seed.1 as usize * (CHUNK_SIZE-1) * PIXELS_PER_POINT;
-    let tex = Texture::new_fill(
-        Extent3d::new((PIXELS_PER_CHUNK) as u32,(PIXELS_PER_CHUNK) as u32,1)
+    let tex = Image::new_fill(
+        Extent3d {
+            width: (PIXELS_PER_CHUNK) as u32,
+            height: (PIXELS_PER_CHUNK) as u32,
+            depth_or_array_layers: 1
+        }
         ,TextureDimension::D2,
         &(0..(PIXELS_PER_CHUNK*PIXELS_PER_CHUNK))
             .flat_map(|i| {
@@ -160,7 +165,7 @@ pub fn chunktotexture(
                  if ih > 22.0 {
                     return [snow.data[gidx + 0],snow.data[gidx + 1],snow.data[gidx + 2],255]
                  } else if ih > -0.3 {
-                    if (slopedata[point_] > 1.5) {
+                    if slopedata[point_] > 1.5 {
                          return[stone.data[gidx + 0],stone.data[gidx + 0],stone.data[gidx + 0],255]
                     } else {
                         return [grass.data[gidx + 0],grass.data[gidx + 1],grass.data[gidx + 2],255]
@@ -280,7 +285,7 @@ pub fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
 }
 
 /// helper function to generate textures and mesh, fails if assets are not loaded.
-pub fn gen(assets: &mut Assets<Texture>,seed: (f32,f32)) -> Result<(Texture,Mesh,ChunkData<f32>),String> {
+pub fn gen(assets: &mut Assets<Image>,seed: (f32,f32)) -> Result<(Image,Mesh,ChunkData<f32>),String> {
     let grass = assets.get(ASSETS_GRASS).map_or_else(|| Err("cant get grass.".to_string()), |x| Ok(x))?;
     let water = assets.get(ASSETS_WATER).map_or_else(|| Err("cant get water.".to_string()), |x| Ok(x))?;
     let sand = assets.get(ASSETS_SAND).map_or_else(|| Err("cant get sand.".to_string()), |x| Ok(x))?;

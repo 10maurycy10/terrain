@@ -4,6 +4,7 @@ use bevy::render::camera::Camera;
 use crate::map;
 use crate::chunk::Map;
 
+#[derive(Component)]
 pub struct UnloadMarker;
 
 pub struct Data {
