@@ -18,20 +18,8 @@ pub struct Map {
 }
 
 impl Map {
-//     /// init a new ungenerated map
-//     pub fn new(seed: (f32,f32), e: Entity) -> Map {
-//         Map {
-//             hightmap: None, 
-//             tex: None, 
-//             mesh: None, 
-//             render: None,
-//             this: Some(e),
-//             wireframe: false,
-//             transform: Transform::identity(),
-//             seed
-//         }
-//     }
-    /// init a map with a trasform
+    /// init a map componet, insert this into an entity to have it generated and rendered
+    /// e is an enity that will be despawned when the map is unloaded.
     pub fn new_with_transform(t: Transform,seed: (f32,f32), e: Entity) -> Map {
         Map {
             hightmap: None, 
@@ -46,7 +34,7 @@ impl Map {
     }
 }
 
-/// set up.
+/// generate and load maps for all entitys with The map component 
 pub fn generate_maps(
     mut commands: Commands,
     mut meshes: ResMut<Assets<Mesh>>,

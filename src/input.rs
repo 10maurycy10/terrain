@@ -3,6 +3,7 @@ use bevy::prelude::*;
 use bevy::render::camera::Camera;
 use bevy::math::Vec3A;
 
+/// current state of keyboard, and a timer for moving the camera
 #[derive(Debug)]
 pub struct InputState{
     w: bool,
@@ -16,6 +17,7 @@ pub struct InputState{
     movetimer: Timer
 }
 
+/// add the required resources
 pub fn set_up(
     mut commands: Commands,
 ) {
@@ -32,6 +34,8 @@ pub fn set_up(
     })
 }
 
+/// poll keyboadevents and timer
+/// NOTE set_up must be run first with commands add_startup_system()
 pub fn keyboard_events(
     time: Res<Time>,
     mut key_evr: EventReader<KeyboardInput>,

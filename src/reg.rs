@@ -5,13 +5,14 @@ use noise::Seedable;
 //          1 == yes
 //          _ == lerp
 
+/// a container for generation options
 pub struct Regdata {
     pub raviens: f32,
     pub clifs: f32,
     pub fiords: f32,
 }
 
-
+/// generate regdata using seed with perlin noise
 pub fn newreg(seed: (f32,f32)) -> Regdata {
     let raviens = Perlin::new();
     raviens.set_seed(100);

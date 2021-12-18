@@ -40,6 +40,7 @@ pub fn getchunksize() -> f32 {
     VOXEL_SCALE * (CHUNK_SIZE-1) as f32
 }
 
+/// create a regdata for a chunk.
 pub fn genchunkreg(seed: (f32,f32)) -> reg::Regdata {
     let regseed = (seed.0 * CHUNK_SIZE as f32,seed.1 * CHUNK_SIZE as f32);
     reg::newreg(regseed)
@@ -70,7 +71,8 @@ fn fiords(h: f32) -> f32 {
 }
 
 /// create a hightmap
-/// [main x+1, y+1, (x+1 y+1)]
+/// regs is a row major array containg a 2x2 grid regions, with 0,0 being the chunk.
+/// the additional regons are used to blend generation
 pub fn genchunk(seed: (f32,f32),regs: &[reg::Regdata;4]) -> ChunkData<f32> {
     // todo, use mabey uninit
     let mut cdata = [0.0_f32; CHUNK_SQSIZE];
@@ -159,7 +161,8 @@ pub fn genslope(data: &ChunkData<f32>) -> ChunkData<f32> {
 }
 
 
-/// convert a hightmap into a texture
+/// generate a chunks texture, projected with (u, v) = (x, z)
+// TODO consolidate arguments
 pub fn chunktotexture(
     data:&ChunkData<f32>, 
     slopedata:&ChunkData<f32>, 
@@ -220,6 +223,7 @@ pub fn chunktotexture(
                 
                  // compute texture index
                  let gidx = ((x%ASSET_SIZE)+(y%ASSET_SIZE)*ASSET_SIZE)*4;
+                 
                  if ih > 22.0 {
                     return [snow.data[gidx + 0],snow.data[gidx + 1],snow.data[gidx + 2],255]
                  } else if ih > -0.3 {
@@ -240,7 +244,8 @@ pub fn chunktotexture(
     tex
 }
 
-/// convert a hightmap to a mesh
+/// convert a hightmap to a mesh with (u, v) = (x, z) texture maping
+/// note, if you intend to tile the meshes the hightmaps must have 1 sample of overlap.
 pub fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
     let mut position = Vec::new();
     
@@ -342,18 +347,23 @@ pub fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
 
 /// helper function to generate textures and mesh, fails if assets are not loaded.
 pub fn gen(assets: &mut Assets<Image>,seed: (f32,f32)) -> Result<(Image,Mesh,ChunkData<f32>),String> {
+    /// grab assets from ecs
     let grass = assets.get(ASSETS_GRASS).map_or_else(|| Err("cant get grass.".to_string()), |x| Ok(x))?;
     let water = assets.get(ASSETS_WATER).map_or_else(|| Err("cant get water.".to_string()), |x| Ok(x))?;
     let sand = assets.get(ASSETS_SAND).map_or_else(|| Err("cant get sand.".to_string()), |x| Ok(x))?;
     let snow = assets.get(ASSETS_SNOW).map_or_else(|| Err("cant get snow.".to_string()), |x| Ok(x))?;
     let stone = assets.get(ASSETS_STONE).map_or_else(|| Err("cant get stone.".to_string()), |x| Ok(x))?;
+    // generate region data, this could be optimized
     let reg   = genchunkreg(seed);
     let regx  = genchunkreg((seed.0 + 1.0, seed.1 + 0.0));
     let regy  = genchunkreg((seed.0 + 0.0, seed.1 + 1.0));
     let regxy = genchunkreg((seed.0 + 1.0, seed.1 + 1.0));
     let regs = [reg,regx,regy,regxy];
+    // generate the hightmap
     let hightmap = genchunk(seed,&regs);
+    // compute slope
     let slopemap = genslope(&hightmap);
+    // create mesh
     let mesh = chunktomesh(&hightmap);
     let tex = chunktotexture(
         &hightmap,

@@ -6,6 +6,7 @@ use bevy::{
 };
 extern crate nalgebra as na;
 
+/// liner interpolation ac is the coificent for a
 pub fn lerp(a: f32,b: f32, ac: f32) -> f32 {
     a*ac + b*(1.0-ac)
 }
@@ -30,21 +31,21 @@ fn main() {
 //             },
 //             ..Default::default()
 //         })
-        .insert_resource(Msaa { samples: 4 })
+        .insert_resource(Msaa { samples: 1 })
         .add_plugins(DefaultPlugins)
         .add_plugin(WireframePlugin)
         .add_startup_system(input::set_up.system())
+        .add_system(input::keyboard_events.system())
         .add_startup_system(loader::init.system())
+        .add_system(loader::load.system())
+        .add_system(loader::unload.system())
         .add_startup_system(setup.system())
-        //.add_startup_system(chunk::insert_map.system())
-        .add_system(loader::load.system().before("unloader"))
-        .add_system(loader::unload.system().label("unloader"))
-        .add_system(chunk::generate_maps.system().before("unloader"))
-        .add_system(input::keyboard_events.system().before("unloader"))
+        .add_system(chunk::generate_maps.system())
         .run();
 }
 
 /// start loading assets and add boilerplate entitys
+/// FIXME this leeks memory
 fn setup(
     mut commands: Commands,
     asset_server: Res<AssetServer>,
