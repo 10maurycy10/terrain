@@ -10,6 +10,7 @@ mod map;
 mod input;
 mod chunk;
 mod loader;
+mod reg;
 
 fn main() {
     App::new()

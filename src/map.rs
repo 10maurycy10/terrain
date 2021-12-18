@@ -9,6 +9,7 @@ use bevy::render::render_resource::TextureFormat;
 use bevy::render::texture::Image;
 use bevy::prelude::*;
 use bevy::render::mesh::Indices;
+use crate::reg;
 
 /// the filenames of the assets
 pub const ASSETS_GRASS: &str = "grass16.png";
@@ -38,8 +39,14 @@ pub fn getchunksize() -> f32 {
     VOXEL_SCALE * (CHUNK_SIZE-1) as f32
 }
 
+pub fn genchunkreg(seed: (f32,f32)) -> reg::Regdata {
+    let regseed = (seed.0 * CHUNK_SIZE as f32,seed.1 * CHUNK_SIZE as f32);
+    reg::newreg(regseed)
+}
+
 /// create a hightmap
-pub fn genchunk(seed: (f32,f32)) -> ChunkData<f32> {
+/// [main x+1, y+1]
+pub fn genchunk(seed: (f32,f32),regs: &[reg::Regdata;3]) -> ChunkData<f32> {
     // todo, use mabey uninit
     let mut cdata = [0.0_f32; CHUNK_SQSIZE];
     let perlin = Perlin::new();
@@ -52,14 +59,33 @@ pub fn genchunk(seed: (f32,f32)) -> ChunkData<f32> {
         let x = (idx % CHUNK_SIZE) as f32;
         let y = (idx / CHUNK_SIZE) as f32;
         
+        
+        let mut reg = &regs[0];
+        
+        if y == CHUNK_SIZE as f32 - 1.0 {reg = &regs[2];} 
+        if x == CHUNK_SIZE as f32 - 1.0 {reg = &regs[1];} 
+            
+        
         let wx = ox + x;
         let wy = oy + y;
         
         let f1 = perlin.get([wx as f64/2.0,wy as f64/2.0]) as f32 * 0.4;
-        let f2 = perlin.get([wx as f64/20.0,wy as f64/20.0]) as f32 * 4.0;
+        let f2 = perlin.get([wx as f64/20.0,wy as f64/20.0]) as f32 * 2.0;
         let f3 = perlin.get([wx as f64/200.0,wy as f64/200.0]) as f32 * 30.0;
         
         *ptr = f1 + f2 + f3;
+        
+        if *ptr > 5.0 && *ptr < 7.0 && reg.raviens {
+            *ptr -= 6.7 
+        }
+        
+        if *ptr > 10.0 && reg.clifs {
+            *ptr += 4.0 
+        }
+        
+        if reg.fiords && *ptr < 10.0 {
+            *ptr -= 9.0
+        }
         
         if *ptr < -0.71 {
             *ptr = -0.71
@@ -103,6 +129,7 @@ pub fn genslope(data: &ChunkData<f32>) -> ChunkData<f32> {
 pub fn chunktotexture(
     data:&ChunkData<f32>, 
     slopedata:&ChunkData<f32>, 
+    _reg: &[reg::Regdata;3],
     grass : &Image, 
     water: &Image,
     sand: &Image,
@@ -291,12 +318,17 @@ pub fn gen(assets: &mut Assets<Image>,seed: (f32,f32)) -> Result<(Image,Mesh,Chu
     let sand = assets.get(ASSETS_SAND).map_or_else(|| Err("cant get sand.".to_string()), |x| Ok(x))?;
     let snow = assets.get(ASSETS_SNOW).map_or_else(|| Err("cant get snow.".to_string()), |x| Ok(x))?;
     let stone = assets.get(ASSETS_STONE).map_or_else(|| Err("cant get stone.".to_string()), |x| Ok(x))?;
-    let hightmap = genchunk(seed);
+    let reg = genchunkreg(seed);
+    let regx = genchunkreg((seed.0 + 1.0, seed.1));
+    let regy = genchunkreg((seed.0, seed.1 + 1.0));
+    let regs = [reg,regx,regy];
+    let hightmap = genchunk(seed,&regs);
     let slopemap = genslope(&hightmap);
     let mesh = chunktomesh(&hightmap);
     let tex = chunktotexture(
         &hightmap,
         &slopemap,
+        &regs,
         grass,
         water,
         sand,
