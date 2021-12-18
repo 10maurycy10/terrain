@@ -10,6 +10,7 @@ use bevy::render::texture::Image;
 use bevy::prelude::*;
 use bevy::render::mesh::Indices;
 use crate::reg;
+use crate::lerp;
 
 /// the filenames of the assets
 pub const ASSETS_GRASS: &str = "grass16.png";
@@ -44,9 +45,33 @@ pub fn genchunkreg(seed: (f32,f32)) -> reg::Regdata {
     reg::newreg(regseed)
 }
 
+fn ravien(h: f32) -> f32 {
+    if h > 5.0 && h < 7.0 {
+            h - 6.7 
+    } else {
+        h
+    }
+}
+
+fn clifs(h: f32) -> f32 {
+    if h > 10.0 {
+            h + 4.0 
+    } else {
+        h
+    }
+}
+
+fn fiords(h: f32) -> f32 {
+    if h < 10.0 {
+            h - 9.0 
+    } else {
+        h
+    }
+}
+
 /// create a hightmap
-/// [main x+1, y+1]
-pub fn genchunk(seed: (f32,f32),regs: &[reg::Regdata;3]) -> ChunkData<f32> {
+/// [main x+1, y+1, (x+1 y+1)]
+pub fn genchunk(seed: (f32,f32),regs: &[reg::Regdata;4]) -> ChunkData<f32> {
     // todo, use mabey uninit
     let mut cdata = [0.0_f32; CHUNK_SQSIZE];
     let perlin = Perlin::new();
@@ -59,12 +84,9 @@ pub fn genchunk(seed: (f32,f32),regs: &[reg::Regdata;3]) -> ChunkData<f32> {
         let x = (idx % CHUNK_SIZE) as f32;
         let y = (idx / CHUNK_SIZE) as f32;
         
-        
-        let mut reg = &regs[0];
-        
-        if y == CHUNK_SIZE as f32 - 1.0 {reg = &regs[2];} 
-        if x == CHUNK_SIZE as f32 - 1.0 {reg = &regs[1];} 
-            
+        // x and y on a scale from 0.0 to 1.0
+        let nx = x as f32 / CHUNK_SIZE as f32;
+        let ny = y as f32 / CHUNK_SIZE as f32;
         
         let wx = ox + x;
         let wy = oy + y;
@@ -75,18 +97,30 @@ pub fn genchunk(seed: (f32,f32),regs: &[reg::Regdata;3]) -> ChunkData<f32> {
         
         *ptr = f1 + f2 + f3;
         
-        if *ptr > 5.0 && *ptr < 7.0 && reg.raviens {
-            *ptr -= 6.7 
-        }
+        let local_rev = lerp(
+            lerp(regs[3].raviens,regs[2].raviens,nx),
+            lerp(regs[1].raviens,regs[0].raviens,nx),
+            ny
+        );
         
-        if *ptr > 10.0 && reg.clifs {
-            *ptr += 4.0 
-        }
+        *ptr = lerp(ravien(*ptr),*ptr,local_rev);
+       
+        let local_clifs = lerp(
+            lerp(regs[3].clifs,regs[2].clifs,nx),
+            lerp(regs[1].clifs,regs[0].clifs,nx),
+            ny
+        );
+       
+        *ptr = lerp(clifs(*ptr),*ptr,local_clifs);
         
-        if reg.fiords && *ptr < 10.0 {
-            *ptr -= 9.0
-        }
+        let local_fiords = lerp(
+            lerp(regs[3].fiords,regs[2].fiords,nx),
+            lerp(regs[1].fiords,regs[0].fiords,nx),
+            ny
+        );
         
+        *ptr = lerp(fiords(*ptr),*ptr,local_fiords);
+       
         if *ptr < -0.71 {
             *ptr = -0.71
         }
@@ -129,7 +163,7 @@ pub fn genslope(data: &ChunkData<f32>) -> ChunkData<f32> {
 pub fn chunktotexture(
     data:&ChunkData<f32>, 
     slopedata:&ChunkData<f32>, 
-    _reg: &[reg::Regdata;3],
+    _reg: &[reg::Regdata;4],
     grass : &Image, 
     water: &Image,
     sand: &Image,
@@ -182,10 +216,7 @@ pub fn chunktotexture(
                 let h_y  = data[point_y];
                 let h_xy = data[point_xy];
                 
-                let ih1 = (h*(1.0-chunk_x_fraction)+h_x*(chunk_x_fraction)) * (1.0-chunk_y_fraction);
-                let ih2 = (h_y*(1.0-chunk_x_fraction)+h_xy*(chunk_x_fraction)) * (chunk_y_fraction);
-                
-                let ih = ih1+ih2;
+                let ih = lerp(lerp(h_xy, h_y, chunk_x_fraction),lerp(h_x,h,chunk_x_fraction),chunk_y_fraction);
                 
                  // compute texture index
                  let gidx = ((x%ASSET_SIZE)+(y%ASSET_SIZE)*ASSET_SIZE)*4;
@@ -198,12 +229,10 @@ pub fn chunktotexture(
                         return [grass.data[gidx + 0],grass.data[gidx + 1],grass.data[gidx + 2],255]
                     }
                  } else if ih> -0.7 {
-                     return [sand.data[gidx + 0],sand.data[gidx + 1],sand.data[gidx + 2],255]
+                    return [sand.data[gidx + 0],sand.data[gidx + 1],sand.data[gidx + 2],255]
                  } else {
                      return [water.data[gidx + 0],water.data[gidx + 1],water.data[gidx + 2],255]
                  }
-//                [(chunk_x_fraction * 255.0) as u8,(chunk_y_fraction * 255.0) as u8,0 as u8,255]
-                
             })
             .collect::<Vec<u8>>()
         ,TextureFormat::Rgba8UnormSrgb
@@ -318,10 +347,11 @@ pub fn gen(assets: &mut Assets<Image>,seed: (f32,f32)) -> Result<(Image,Mesh,Chu
     let sand = assets.get(ASSETS_SAND).map_or_else(|| Err("cant get sand.".to_string()), |x| Ok(x))?;
     let snow = assets.get(ASSETS_SNOW).map_or_else(|| Err("cant get snow.".to_string()), |x| Ok(x))?;
     let stone = assets.get(ASSETS_STONE).map_or_else(|| Err("cant get stone.".to_string()), |x| Ok(x))?;
-    let reg = genchunkreg(seed);
-    let regx = genchunkreg((seed.0 + 1.0, seed.1));
-    let regy = genchunkreg((seed.0, seed.1 + 1.0));
-    let regs = [reg,regx,regy];
+    let reg   = genchunkreg(seed);
+    let regx  = genchunkreg((seed.0 + 1.0, seed.1 + 0.0));
+    let regy  = genchunkreg((seed.0 + 0.0, seed.1 + 1.0));
+    let regxy = genchunkreg((seed.0 + 1.0, seed.1 + 1.0));
+    let regs = [reg,regx,regy,regxy];
     let hightmap = genchunk(seed,&regs);
     let slopemap = genslope(&hightmap);
     let mesh = chunktomesh(&hightmap);

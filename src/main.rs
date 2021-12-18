@@ -6,6 +6,10 @@ use bevy::{
 };
 extern crate nalgebra as na;
 
+pub fn lerp(a: f32,b: f32, ac: f32) -> f32 {
+    a*ac + b*(1.0-ac)
+}
+
 mod map;
 mod input;
 mod chunk;
