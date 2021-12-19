@@ -2,8 +2,4 @@
 
 A program to gererate and draw hightmap terrain.
 
-## WIP!!
-
-![](screenshoot.png)
-
-![](20211216_13h50m32s_grim.png)
+![](20211218_11h29m11s_grim.png)
