@@ -43,6 +43,7 @@ pub fn keyboard_events(
     mut state: ResMut<InputState>
 ) {
     use bevy::input::ElementState;
+    let mut dbg = false;
 
     for ev in key_evr.iter() {
         match ev.state {
@@ -54,6 +55,7 @@ pub fn keyboard_events(
                     Some(KeyCode::D) => state.d = true,
                     Some(KeyCode::E) => state.e = true,
                     Some(KeyCode::Q) => state.q = true,
+                    Some(KeyCode::P) => dbg = true,
                     Some(KeyCode::LShift) => state.shift = true,
                     Some(KeyCode::LControl) => state.ctrl = true,
                     _ => ()
@@ -99,6 +101,7 @@ pub fn keyboard_events(
     let q = Quat::from_rotation_y(r);
     
     for mut c in cameras.iter_mut() {
+        if dbg {println!("{:?}", c);}
         let r = c.rotation.mul_vec3a(Vec3A::new(x,0.0,z));
         c.translation.x += r.x;
         c.translation.z += r.z;

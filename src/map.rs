@@ -1,6 +1,8 @@
 use noise::{NoiseFn, Perlin};
 use noise::Seedable;
 use nalgebra::Vector3;
+use nalgebra::Vector2;
+use nalgebra::Rotation2;
 use bevy::render::mesh::Mesh;
 use bevy::render::render_resource::Extent3d;
 use bevy::render::render_resource::TextureDimension;
@@ -26,7 +28,7 @@ pub const PIXELS_PER_POINT: usize = 4;
 pub const CHUNK_SIZE: usize = 64;
 
 pub const PIXELS_PER_CHUNK: usize = PIXELS_PER_POINT*CHUNK_SIZE;
-/// the aria (samples) of a chunk
+/// the area (samples) of a chunk
 pub const CHUNK_SQSIZE: usize = CHUNK_SIZE*CHUNK_SIZE;
 /// size of sample on map`
 pub const VOXEL_SCALE: f32 = 0.4;
@@ -70,6 +72,52 @@ fn fiords(h: f32) -> f32 {
     }
 }
 
+/// A simple noise function.
+fn get_2d_noise(x: f32, y: f32) -> f32 {
+    (x*11.0 + y*29.0).sin()
+}
+
+/// A function that must return 0 when x%1 == 0
+fn get_base_fn(x: f32) -> f32 {
+    (x*std::f32::consts::PI).sin()
+}
+
+#[test]
+fn is_base_fn_sane() {
+    assert!(get_base_fn(0.0).abs() < 0.01);
+    assert!(get_base_fn(1.0).abs() < 0.01);
+    assert!(get_base_fn(2.0).abs() < 0.01);
+    assert!(get_base_fn(-1.0).abs() < 0.01);
+}
+
+fn get_basic_map(x: f32, y: f32) -> f32 {
+    let fx = x.floor();
+    let fy = y.floor();
+    let noise = get_2d_noise(fx, fy);
+    
+    get_base_fn(x) *  get_base_fn(y) * noise
+}
+
+// basic map rotated a
+fn get_rotated_map(x: f32, y: f32, a: f32) -> f32 {
+    use nalgebra::Point2;
+    let rot = Rotation2::new(a);
+    let rv = rot * Point2::new(x, y);
+    get_basic_map(rv[0], rv[1])
+}
+
+/// generates a hightmap without any modifyers applyed
+fn get_base_hightmap(wx: f32, wy: f32) -> f32 {
+    get_rotated_map(wx / 256.0, wy / 256.0, 1.0) * 32.0 + 
+    get_rotated_map(wx / 128.0, wy / 128.0, 2.0) * 16.0 + 
+    get_rotated_map(wx / 64.0, wy / 64.0, 3.0) * 8.0 + 
+    get_rotated_map(wx / 32.0, wy / 32.0, 4.0) * 4.0 + 
+    get_rotated_map(wx / 16.0, wy / 16.0, 5.0) * 2.0 + 
+    get_rotated_map(wx / 8.0, wy / 8.0, 6.0) * 1.0 + 
+    get_rotated_map(wx / 4.0, wy / 4.0, 7.0) * 0.5 +
+    get_rotated_map(wx / 2.0, wy / 2.0, 8.0) * 0.25
+}
+
 /// create a hightmap
 /// regs is a row major array containg a 2x2 grid regions, with 0,0 being the chunk.
 /// the additional regons are used to blend generation
@@ -93,11 +141,7 @@ pub fn genchunk(seed: (f32,f32),regs: &[reg::Regdata;4]) -> ChunkData<f32> {
         let wx = ox + x;
         let wy = oy + y;
         
-        let f1 = perlin.get([wx as f64/2.0,wy as f64/2.0]) as f32 * 0.4;
-        let f2 = perlin.get([wx as f64/20.0,wy as f64/20.0]) as f32 * 2.0;
-        let f3 = perlin.get([wx as f64/200.0,wy as f64/200.0]) as f32 * 30.0;
-        
-        *ptr = f1 + f2 + f3;
+        *ptr = get_base_hightmap(wx, wy);
         
         let local_rev = lerp(
             lerp(regs[3].raviens,regs[2].raviens,nx),
@@ -123,6 +167,7 @@ pub fn genchunk(seed: (f32,f32),regs: &[reg::Regdata;4]) -> ChunkData<f32> {
         
         *ptr = lerp(fiords(*ptr),*ptr,local_fiords);
        
+        // clip to sea level
         if *ptr < -0.71 {
             *ptr = -0.71
         }
