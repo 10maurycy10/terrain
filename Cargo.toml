@@ -9,13 +9,15 @@ resolver="2"
 [dependencies]
 nalgebra = "*"
 noise = "0.7.0"
-bevy = {features = ["dynamic"], git="https://github.com/bevyengine/bevy.git", commit = "7356f1586d74039f840bcfcf24af3e21c23e3c18" }
-#bevy = { git = "https://github.com/bevyengine/bevy", commit = "4423a2fa2dc82fad71525ed3f44e16b8481a4902", default-features = true, features = ["dynamic"]}
+bevy = { version = "0.10.1", features = ["dynamic_linking"] }
+#bevy = { git = "https://github.com/bevyengine/bevy", commit = "4423a2fa2dc82fad71525ed3f44e16b8481a4902", default-features = true, features = ["dynamic_linking"]}
 
-[target.x86_64-unknown-linux-gnu]
-linker = "/usr/bin/clang"
-rustflags = ["-Clink-arg=-fuse-ld=lld", "-Zshare-generics=y"]
+# Enable a small amount of optimization in debug mode
+[profile.dev]
+opt-level = 1
 
-[target.x86_64-pc-windows-msvc]
-linker = "rust-lld.exe"
-rustflags = ["-Zshare-generics=n"]
+# Enable high optimizations for dependencies (incl. Bevy), but not for our code:
+[profile.dev.package."*"]
+opt-level = 3
+
+

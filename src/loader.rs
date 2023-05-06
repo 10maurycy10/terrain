@@ -4,10 +4,14 @@ use bevy::render::camera::Camera;
 use crate::map;
 use crate::chunk::Map;
 
+/// Manhatan distance for loaded chunks.
+const loaded_distance:i32 = 1;
+
 #[derive(Component)]
 pub struct UnloadMarker;
 
 /// resource containing a hashmap of positions -> map entitys
+#[derive(Resource)]
 pub struct Data {
     loader: HashMap<(i32,i32),Entity>
 }
@@ -21,7 +25,7 @@ pub fn init(mut commands: Commands) {
 
 pub fn load(
     mut commands: Commands,
-    cameras: Query<&GlobalTransform, With<Camera>>,
+    cameras: Query<&Transform, With<Camera>>,
     mut data: ResMut<Data>
     
 ) {
@@ -32,15 +36,15 @@ pub fn load(
     let x = (c.translation.x / s) as i32;
     let y = (c.translation.z / s) as i32;
     
-    for cx in (x-5)..(x+5) {
-        for cy in (y-5)..(y+5) {
+    for cx in (x-loaded_distance)..(x+loaded_distance) {
+        for cy in (y-loaded_distance)..(y+loaded_distance) {
             match data.loader.get(&(cx,cy)) {
                 Some(_) => continue,
                 None => ()
             }
             let xf = cx as f32;
             let yf = cy as f32;
-            let mut e = commands.spawn();
+            let mut e = commands.spawn_empty();
             let spawned = e.insert(Map::new_with_transform(Transform::from_xyz(s*xf,0.0,s*yf),(xf,yf),e.id())).id();
             data.loader.insert((cx,cy),spawned);
         }
@@ -49,7 +53,7 @@ pub fn load(
     let mut v: Vec<(i32,i32)> = Vec::new();
     
     for (k, id) in data.loader.iter() {
-         if ((x - k.0).abs()>6) || ((y - k.1).abs())>6 {
+         if ((x - k.0).abs()>(loaded_distance + 1)) || ((y - k.1).abs())>(loaded_distance + 1) {
             println!("{:?} marked for unload",k);
             v.push(*k);
             commands.entity(*id).insert(UnloadMarker {});

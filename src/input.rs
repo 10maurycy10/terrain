@@ -4,7 +4,7 @@ use bevy::render::camera::Camera;
 use bevy::math::Vec3A;
 
 /// current state of keyboard, and a timer for moving the camera
-#[derive(Debug)]
+#[derive(Debug, Resource)]
 pub struct InputState{
     w: bool,
     a: bool,
@@ -30,7 +30,7 @@ pub fn set_up(
         e: false, 
         shift: false, 
         ctrl: false, 
-        movetimer: Timer::from_seconds(1.0/30.0, true)
+        movetimer: Timer::from_seconds(1.0/30.0, TimerMode::Repeating)
     })
 }
 
@@ -39,15 +39,15 @@ pub fn set_up(
 pub fn keyboard_events(
     time: Res<Time>,
     mut key_evr: EventReader<KeyboardInput>,
-    mut cameras: Query<&mut GlobalTransform, With<Camera>>,
+    mut cameras: Query<&mut Transform, With<Camera>>,
     mut state: ResMut<InputState>
 ) {
-    use bevy::input::ElementState;
+    use bevy::input::ButtonState;
     let mut dbg = false;
 
     for ev in key_evr.iter() {
         match ev.state {
-            ElementState::Pressed => {
+            ButtonState::Pressed => {
                 match ev.key_code {
                     Some(KeyCode::W) => state.w = true,
                     Some(KeyCode::A) => state.a = true,
@@ -61,7 +61,7 @@ pub fn keyboard_events(
                     _ => ()
                 }
             }
-            ElementState::Released => {
+            ButtonState::Released => {
                 match ev.key_code {
                     Some(KeyCode::W) => state.w = false,
                     Some(KeyCode::A) => state.a = false,

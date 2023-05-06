@@ -70,7 +70,7 @@ pub fn generate_maps(
             ..Default::default()
         });
         
-        let mut w = commands.spawn_bundle(PbrBundle {
+        let mut w = commands.spawn(PbrBundle {
             mesh: meshes.add(m),
             material: material_handle,
             transform: map.transform,

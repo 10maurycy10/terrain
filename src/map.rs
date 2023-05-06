@@ -383,21 +383,28 @@ pub fn chunktomesh(hightmap: &ChunkData<f32>) -> Mesh {
     
     // pack all data into bevy mesh
     let mut mesh = Mesh::new(PrimitiveTopology::TriangleList);
-    mesh.set_attribute(Mesh::ATTRIBUTE_POSITION, position);
-    mesh.set_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
-    mesh.set_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_POSITION, position);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_NORMAL, normals);
+    mesh.insert_attribute(Mesh::ATTRIBUTE_UV_0, uvs);
     mesh.set_indices(Some(Indices::U32(indeces)));
     mesh
 }
 
 /// helper function to generate textures and mesh, fails if assets are not loaded.
 pub fn gen(assets: &mut Assets<Image>,seed: (f32,f32)) -> Result<(Image,Mesh,ChunkData<f32>),String> {
-    /// grab assets from ecs
-    let grass = assets.get(ASSETS_GRASS).map_or_else(|| Err("cant get grass.".to_string()), |x| Ok(x))?;
-    let water = assets.get(ASSETS_WATER).map_or_else(|| Err("cant get water.".to_string()), |x| Ok(x))?;
-    let sand = assets.get(ASSETS_SAND).map_or_else(|| Err("cant get sand.".to_string()), |x| Ok(x))?;
-    let snow = assets.get(ASSETS_SNOW).map_or_else(|| Err("cant get snow.".to_string()), |x| Ok(x))?;
-    let stone = assets.get(ASSETS_STONE).map_or_else(|| Err("cant get stone.".to_string()), |x| Ok(x))?;
+    // grab assets from ecs
+    let grass = assets.get_handle(ASSETS_GRASS);
+    let water = assets.get_handle(ASSETS_WATER);
+    let sand = assets.get_handle(ASSETS_SAND);
+    let snow = assets.get_handle(ASSETS_SNOW);
+    let stone = assets.get_handle(ASSETS_STONE);
+    
+    let grass = assets.get(&grass).map_or_else(|| Err("cant get asset grass.".to_string()), |x| Ok(x))?;
+    let water = assets.get(&water).map_or_else(|| Err("cant get asset water.".to_string()), |x| Ok(x))?;
+    let sand = assets.get(&sand).map_or_else(|| Err("cant get asset sand.".to_string()), |x| Ok(x))?;
+    let snow = assets.get(&snow).map_or_else(|| Err("cant get asset snow.".to_string()), |x| Ok(x))?;
+    let stone = assets.get(&stone).map_or_else(|| Err("cant get asset stone.".to_string()), |x| Ok(x))?;
+    
     // generate region data, this could be optimized
     let reg   = genchunkreg(seed);
     let regx  = genchunkreg((seed.0 + 1.0, seed.1 + 0.0));
